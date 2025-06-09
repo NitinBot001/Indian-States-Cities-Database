@@ -1,12 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="cities.js"></script>
-    <title>Document</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic State and District Dropdown</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        select {
+            padding: 8px;
+            margin: 10px 0;
+            width: 200px;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
 </head>
 <body>
-<select onchange="print_city('state', this.selectedIndex);" id="sts" name ="stt" class="form-control" required></select>
-<select id ="state" class="form-control" required></select>
-<script language="javascript">print_state("sts");</script>
+    <div>
+        <label for="state">State:</label>
+        <select id="state" onchange="print_city('city', this.value)">
+            <option value="">Select State</option>
+        </select>
+    </div>
+    <div>
+        <label for="city">District:</label>
+        <select id="city">
+            <option value="">Select District</option>
+        </select>
+    </div>
+    <div>
+        <button onclick="logSelections()">Log Selections</button>
+    </div>
+
+    <script>
+        // Object to store state and district data from CSV
+        let stateDistrictData = {};
+
+        // Function to load and parse the CSV file
+        function loadCSVData() {
+            // Replace 'path/to/your/file.csv' with the actual path to your CSV file
+            fetch('37231365-78ba-44d5-ac22-3deec40b9197.csv')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function(results) {
+                            processCSVData(results.data);
+                            print_state('state');
+                        },
+                        error: function(error) {
+                            console.error('Error parsing CSV:', error);
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching CSV:', error);
+                });
+        }
+
+        // Function to process CSV data and group districts by state
+        function processCSVData(data) {
+            data.forEach(row => {
+                const stateName = row.state_name_english;
+                const districtName = row.district_name_english;
+                if (stateName && districtName) {
+                    if (!stateDistrictData[stateName]) {
+                        stateDistrictData[stateName] = [];
+                    }
+                    if (!stateDistrictData[stateName].includes(districtName)) {
+                        stateDistrictData[stateName].push(districtName);
+                    }
+                }
+            });
+            // Sort districts alphabetically for each state
+            for (let state in stateDistrictData) {
+                stateDistrictData[state].sort();
+            }
+        }
+
+        // Function to populate state dropdown
+        function print_state(state_id) {
+            var option_str = document.getElementById(state_id);
+            option_str.length = 0;
+            option_str.options[0] = new Option('Select State', '');
+            option_str.selectedIndex = 0;
+            const state_arr = Object.keys(stateDistrictData).sort();
+            for (var i = 0; i < state_arr.length; i++) {
+                option_str.options[option_str.length] = new Option(state_arr[i], state_arr[i]);
+            }
+        }
+
+        // Function to populate district dropdown based on selected state
+        function print_city(city_id, state_name) {
+            var option_str = document.getElementById(city_id);
+            option_str.length = 0;
+            option_str.options[0] = new Option('Select District', '');
+            option_str.selectedIndex = 0;
+            if (state_name && stateDistrictData[state_name]) {
+                var city_arr = stateDistrictData[state_name];
+                for (var i = 0; i < city_arr.length; i++) {
+                    option_str.options[option_str.length] = new Option(city_arr[i], city_arr[i]);
+                }
+            }
+        }
+
+        // Function to log selected state and district to console
+        function logSelections() {
+            const state = document.getElementById('state').value;
+            const district = document.getElementById('city').value;
+            if (state === '' || district === '') {
+                console.log('Please select both a state and a district.');
+            } else {
+                console.log('Selected State: ' + state);
+                console.log('Selected District: ' + district);
+            }
+        }
+
+        // Load CSV data when the page loads
+        window.onload = loadCSVData;
+    </script>
 </body>
 </html>
